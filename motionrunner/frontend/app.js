@@ -241,7 +241,7 @@
     }
 
     browserPose = new window.Pose({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`,
     });
     browserPose.setOptions({
       modelComplexity: 1,
@@ -274,10 +274,11 @@
     if (!browserTrackingEnabled) return;
 
     const landmarks = results.poseLandmarks;
-    const requiredLandmarks = landmarks && [11, 12, 23, 24].every(
-      (index) => landmarks[index] && (landmarks[index].visibility || 0) >= 0.45,
+    const requiredLandmarks = landmarks && [11, 12, 23, 24].every((index) => landmarks[index]);
+    const shouldersVisible = requiredLandmarks && [11, 12].every(
+      (index) => (landmarks[index].visibility || 0) >= 0.35,
     );
-    if (!requiredLandmarks) {
+    if (!shouldersVisible) {
       handleTelemetryMessage({ pose_detected: false, calibrated: false });
       return;
     }

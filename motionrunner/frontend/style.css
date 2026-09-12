@@ -586,6 +586,7 @@ body {
   border-radius: 6px;
   object-fit: cover;
   background: #0c0c14;
+  transform: scaleX(-1);
 }
 
 .mini-hud-chips {
@@ -900,6 +901,7 @@ body {
   height: 100%;
   object-fit: cover;
   display: block;
+  transform: scaleX(-1);
 }
 
 .video-overlay-state {

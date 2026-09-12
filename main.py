@@ -26,6 +26,7 @@ Note for macOS Users:
     System Settings -> Privacy & Security -> Accessibility
 """
 
+import sys
 import time
 import cv2
 import mediapipe as mp
@@ -408,4 +409,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "--serve" in sys.argv:
+        from motionrunner.backend.main import main as backend_main
+
+        backend_main()
+    else:
+        main()
