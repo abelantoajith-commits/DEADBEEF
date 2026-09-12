@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MotionRunner — Body-Motion Arcade Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="nav-left">
+        <a href="#" class="logo">
+          <div class="logo-icon-box">
+            <span class="material-symbols-outlined logo-icon">directions_run</span>
+          </div>
+          <span class="logo-text">Motion<span class="logo-accent">Runner</span></span>
+        </a>
+      </div>
+
+      <div class="nav-center">
+        <div class="search-bar">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input type="text" placeholder="Search motion games, genres, tags..." aria-label="Search">
+        </div>
+      </div>
+
+      <div class="nav-right">
+        <div class="connection-status-pill" id="server-status-pill">
+          <span class="status-dot disconnected" id="server-status-dot"></span>
+          <span class="status-label" id="server-status-text">Connecting...</span>
+        </div>
+        <button class="icon-btn" title="Bookmarks" aria-label="Bookmarks">
+          <span class="material-symbols-outlined">bookmark</span>
+        </button>
+        <button class="icon-btn" title="Notifications" aria-label="Notifications">
+          <span class="material-symbols-outlined">notifications</span>
+        </button>
+        <button class="login-btn" type="button">Log In</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout (65% Left / 35% Right) -->
+  <main class="main-wrapper">
+    <div class="content-grid">
+
+      <!-- LEFT COLUMN: Game Viewport & Control Dock (~65%) -->
+      <section class="game-column" id="game-section">
+        <div class="card game-card" id="game-container">
+          
+          <!-- Viewport Header Strip -->
+          <div class="viewport-hud-bar">
+            <div class="hud-left">
+              <div class="badge live-badge">
+                <span class="pulse-dot"></span>
+                <span>BODY TRACKING SYNC</span>
+              </div>
+              <span class="hud-divider">|</span>
+              <select id="game-source-select" class="game-select-pill" title="Choose Subway Surfers Game Build">
+                <option value="https://subwaygame.io/subway-surfers-classic/" selected>🌐 Online Classic (subwaygame.io)</option>
+                <option value="/game/index.html">🎮 Built-in 3D Engine (WebGL)</option>
+              </select>
+            </div>
+            <div class="hud-right">
+              <button class="hud-action-btn" id="focus-game-btn" title="Click to focus game for keyboard/motion input">
+                <span class="material-symbols-outlined">center_focus_strong</span>
+                <span>Focus Game</span>
+              </button>
+              <button class="hud-action-btn" id="fullscreen-btn" title="Toggle Fullscreen">
+                <span class="material-symbols-outlined" id="fs-icon">fullscreen</span>
+                <span>Fullscreen</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Game Iframe Viewport Container -->
+          <div class="game-viewport-wrap" id="game-viewport">
+            <!-- Click-to-Focus Overlay -->
+            <div class="click-focus-overlay" id="click-focus-overlay">
+              <div class="focus-callout">
+                <span class="material-symbols-outlined focus-icon">touch_app</span>
+                <span class="focus-title">CLICK GAME TO START & FOCUS CONTROLS</span>
+                <span class="focus-sub">Enables body motion gestures to steer your runner</span>
+              </div>
+            </div>
+
+            <iframe 
+              src="https://subwaygame.io/subway-surfers-classic/" 
+              id="game-frame" 
+              title="Subway Surfers Classic" 
+              allow="autoplay; fullscreen; gamepad; focus-without-user-activation; keyboard-map"
+              allowfullscreen="true"
+              tabindex="0">
+            </iframe>
+
+            <!-- Fullscreen Floating Webcam Mini-HUD -->
+            <div class="floating-webcam-hud" id="floating-webcam" style="display: none;">
+              <div class="mini-hud-header">
+                <span class="mini-hud-title">LIVE TRACKER</span>
+                <button class="mini-hud-close" id="close-mini-hud" title="Minimize Mini HUD">×</button>
+              </div>
+              <img id="floating-cam-img" alt="Mini Pose Tracker" class="mini-cam-feed">
+              <div class="mini-hud-chips">
+                <span class="mini-chip" id="mini-h-chip">H: NONE</span>
+                <span class="mini-chip" id="mini-v-chip">V: NONE</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Docked Controls & Meta Info Bar -->
+          <div class="game-meta-dock">
+            <div class="game-meta-row">
+              <div class="game-identity">
+                <div class="game-badge-icon">
+                  <span class="material-symbols-outlined">videogame_asset</span>
+                </div>
+                <div class="game-titles">
+                  <div class="title-with-badge">
+                    <h1 class="game-title">Subway Surfers</h1>
+                    <span class="verified-tag material-symbols-outlined" title="Verified Motion Compatible">verified</span>
+                  </div>
+                  <div class="game-tags">
+                    <span class="tag">Endless Runner</span>
+                    <span class="dot-sep">•</span>
+                    <span class="tag highlight">MediaPipe Pose CV</span>
+                    <span class="dot-sep">•</span>
+                    <span class="tag version">WebGL 3D</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Quick Action Buttons -->
+              <div class="game-actions">
+                <button class="action-btn" id="btn-action-fullscreen" title="Play Fullscreen" style="border-color: rgba(95, 214, 224, 0.4); color: #5fd6e0;">
+                  <span class="material-symbols-outlined">fullscreen</span>
+                  <span>Fullscreen</span>
+                </button>
+                <button class="action-btn" id="btn-like" title="Like Game">
+                  <span class="material-symbols-outlined">thumb_up</span>
+                  <span class="action-count" id="like-count">1.4K</span>
+                </button>
+                <button class="action-btn" id="btn-dislike" title="Dislike Game">
+                  <span class="material-symbols-outlined">thumb_down</span>
+                </button>
+                <button class="action-btn" id="btn-bookmark" title="Bookmark">
+                  <span class="material-symbols-outlined" id="bookmark-icon">bookmark_border</span>
+                </button>
+                <button class="action-btn" id="btn-report" title="Report Issue">
+                  <span class="material-symbols-outlined">flag</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Motion Instructions Callout Banner -->
+            <div class="motion-instructions-banner">
+              <div class="instr-icon-box">
+                <span class="material-symbols-outlined">accessibility_new</span>
+              </div>
+              <div class="instr-content">
+                <h4 class="instr-heading">How to Play with Body Motion</h4>
+                <p class="instr-text">
+                  Stand 4–6 feet from your camera so your upper body is visible. 
+                  <strong>Lean Left / Right</strong> to switch lanes, 
+                  <strong>Jump in place</strong> to leap over obstacles, and 
+                  <strong>Duck / Crouch</strong> to slide under hurdles.
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: Webcam Vision Engine & Leaderboard (~35%) -->
+      <aside class="sidebar-column">
+
+        <!-- 1. WEBCAM PREVIEW CARD -->
+        <div class="card panel-card webcam-card">
+          <div class="card-header">
+            <div class="header-left">
+              <div class="card-icon-box cyan-box">
+                <span class="material-symbols-outlined">videocam</span>
+              </div>
+              <h2 class="card-heading">Webcam Preview</h2>
+            </div>
+            <div class="header-right">
+              <div class="badge-chip" id="cam-active-badge">
+                <span class="dot green-dot" id="cam-dot"></span>
+                <span id="cam-status-text">Active</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Video Stream Display Area -->
+          <div class="video-preview-wrapper" id="video-wrapper">
+            <!-- Rendered Base64 Skeleton Stream -->
+            <img id="webcam-feed" alt="Live Pose Skeleton Feed" class="webcam-feed-img">
+
+            <!-- Empty / Disconnected Placeholder View -->
+            <div class="video-overlay-state" id="cam-overlay-placeholder">
+              <div class="placeholder-content">
+                <div class="loading-ring"></div>
+                <span class="placeholder-title" id="cam-placeholder-title">Connecting to Vision Engine...</span>
+                <span class="placeholder-desc">Make sure <code>python main.py --serve</code> is running</span>
+              </div>
+            </div>
+
+            <!-- Floating Overlay Banner for Calibration / Lost Pose -->
+            <div class="tracking-hud-banner" id="tracking-banner" style="display: none;">
+              <span class="material-symbols-outlined banner-icon" id="banner-icon">sync</span>
+              <span class="banner-text" id="banner-text">Calibrating...</span>
+            </div>
+          </div>
+
+          <!-- Calibration Progress Indicator -->
+          <div class="calib-progress-container" id="calib-bar-wrap" style="display: none;">
+            <div class="progress-labels">
+              <span class="progress-title">Baseline Calibration</span>
+              <span class="progress-pct" id="calib-pct-text">0%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="calib-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <!-- Detected Gestures & Status Chips (HTML/CSS Driven) -->
+          <div class="telemetry-section">
+            <div class="telemetry-header">
+              <span class="section-label">Active Motion Readout</span>
+              <span class="coords-readout" id="coords-text">dx: 0.00 | dy: 0.00</span>
+            </div>
+
+            <div class="status-chips-grid">
+              <!-- H-Key Chip -->
+              <div class="telemetry-chip" id="chip-h-key">
+                <div class="chip-top">
+                  <span class="material-symbols-outlined chip-icon">swap_horiz</span>
+                  <span class="chip-label">H-KEY</span>
+                </div>
+                <span class="chip-value" id="val-h-key">NONE</span>
+              </div>
+
+              <!-- V-Key Chip -->
+              <div class="telemetry-chip" id="chip-v-key">
+                <div class="chip-top">
+                  <span class="material-symbols-outlined chip-icon">swap_vert</span>
+                  <span class="chip-label">V-KEY</span>
+                </div>
+                <span class="chip-value" id="val-v-key">NONE</span>
+              </div>
+
+              <!-- Calibrated Status Chip -->
+              <div class="telemetry-chip" id="chip-status">
+                <div class="chip-top">
+                  <span class="material-symbols-outlined chip-icon">verified</span>
+                  <span class="chip-label">STATUS</span>
+                </div>
+                <span class="chip-value" id="val-calib-status">STAND STILL</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recalibrate Trigger Button -->
+          <div class="card-footer-actions">
+            <button class="btn btn-primary btn-block" id="recalibrate-btn" type="button">
+              <span class="material-symbols-outlined" id="recal-btn-icon">refresh</span>
+              <span>Recalibrate Tracker</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. HIGH SCORES CARD -->
+        <div class="card panel-card highscores-card">
+          <div class="card-header">
+            <div class="header-left">
+              <div class="card-icon-box violet-box">
+                <span class="material-symbols-outlined">emoji_events</span>
+              </div>
+              <h2 class="card-heading">High Scores</h2>
+            </div>
+            <div class="header-right">
+              <span class="badge-tag">Local Vault</span>
+            </div>
+          </div>
+
+          <!-- Score Submission Form -->
+          <form class="score-form" id="score-form">
+            <div class="form-title-row">
+              <span class="form-title">Submit New Run</span>
+              <span class="form-hint">Record your score</span>
+            </div>
+            <div class="form-inputs-row">
+              <div class="input-wrap name-wrap">
+                <input 
+                  type="text" 
+                  id="runner-name" 
+                  placeholder="Player Name" 
+                  maxlength="20"
+                  required
+                  value="RunnerOne">
+              </div>
+              <div class="input-wrap score-wrap">
+                <input 
+                  type="number" 
+                  id="runner-score" 
+                  placeholder="Score" 
+                  min="1" 
+                  max="9999999" 
+                  required
+                  value="12450">
+              </div>
+            </div>
+            <button class="btn btn-accent btn-sm btn-block" type="submit" id="submit-score-btn">
+              <span class="material-symbols-outlined">done</span>
+              <span>Add to Leaderboard</span>
+            </button>
+          </form>
+
+          <!-- Leaderboard Ranked List -->
+          <div class="leaderboard-section">
+            <div class="leaderboard-header-row">
+              <div class="col-rank-name">
+                <span class="col-hdr rank-hdr">#</span>
+                <span class="col-hdr">Player</span>
+              </div>
+              <div class="col-score-date">
+                <span class="col-hdr text-right">Score</span>
+                <span class="col-hdr date-hdr text-right">Date</span>
+              </div>
+            </div>
+
+            <!-- Dynamic Leaderboard Rows Container -->
+            <div class="scores-list" id="scores-list">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+
+          <!-- Clear / Reset Scores Action -->
+          <div class="leaderboard-footer">
+            <button class="text-link-btn" id="clear-scores-btn" type="button">Reset Leaderboard</button>
+          </div>
+        </div>
+
+      </aside>
+
+    </div>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
