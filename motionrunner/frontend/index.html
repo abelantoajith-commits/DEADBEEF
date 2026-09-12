@@ -106,7 +106,7 @@
                 <span class="mini-hud-title">LIVE TRACKER</span>
                 <button class="mini-hud-close" id="close-mini-hud" title="Minimize Mini HUD">×</button>
               </div>
-              <img id="floating-cam-img" alt="Mini Pose Tracker" class="mini-cam-feed">
+              <video id="floating-cam-img" alt="Mini Pose Tracker" class="mini-cam-feed" autoplay playsinline muted></video>
               <div class="mini-hud-chips">
                 <span class="mini-chip" id="mini-h-chip">H: NONE</span>
                 <span class="mini-chip" id="mini-v-chip">V: NONE</span>
@@ -201,14 +201,14 @@
           <!-- Video Stream Display Area -->
           <div class="video-preview-wrapper" id="video-wrapper">
             <!-- Rendered Base64 Skeleton Stream -->
-            <img id="webcam-feed" alt="Live Pose Skeleton Feed" class="webcam-feed-img">
+            <video id="webcam-feed" aria-label="Live webcam preview" class="webcam-feed-img" autoplay playsinline muted></video>
 
             <!-- Empty / Disconnected Placeholder View -->
             <div class="video-overlay-state" id="cam-overlay-placeholder">
               <div class="placeholder-content">
                 <div class="loading-ring"></div>
                 <span class="placeholder-title" id="cam-placeholder-title">Connecting to Vision Engine...</span>
-                <span class="placeholder-desc">Make sure <code>python main.py --serve</code> is running</span>
+                <span class="placeholder-desc" id="cam-placeholder-desc">Allow camera access to start the browser preview.</span>
               </div>
             </div>
 

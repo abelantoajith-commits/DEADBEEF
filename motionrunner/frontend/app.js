@@ -72,6 +72,8 @@
   let socket = null;
   let reconnectTimer = null;
   let isConnected = false;
+  let localCameraReady = false;
+  let localCameraStream = null;
   let lastFrameTime = Date.now();
   let frameCount = 0;
   let fps = 0;
@@ -146,10 +148,10 @@
   function handleDisconnect() {
     isConnected = false;
     if (serverStatusPill) {
-      serverStatusPill.className = 'connection-status-pill error';
-      serverStatusText.textContent = 'Vision Offline';
+      serverStatusPill.className = `connection-status-pill ${localCameraReady ? 'connected' : 'error'}`;
+      serverStatusText.textContent = localCameraReady ? 'Camera Ready' : 'Vision Offline';
     }
-    if (camOverlayPlaceholder) {
+    if (camOverlayPlaceholder && !localCameraReady) {
       camOverlayPlaceholder.style.display = 'flex';
       camPlaceholderTitle.textContent = 'Vision Engine Disconnected';
     }
@@ -169,6 +171,34 @@
         reconnectTimer = null;
         connectWebSocket();
       }, 2000);
+    }
+  }
+
+  async function startBrowserCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (camPlaceholderTitle) camPlaceholderTitle.textContent = 'Camera API unavailable';
+      return;
+    }
+
+    try {
+      localCameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: false,
+      });
+      localCameraReady = true;
+      if (webcamFeed) webcamFeed.srcObject = localCameraStream;
+      if (floatingCamImg) floatingCamImg.srcObject = localCameraStream;
+      if (camOverlayPlaceholder) camOverlayPlaceholder.style.display = 'none';
+      if (serverStatusPill && !isConnected) {
+        serverStatusPill.className = 'connection-status-pill connected';
+        serverStatusText.textContent = 'Camera Ready';
+      }
+    } catch (error) {
+      localCameraReady = false;
+      if (camPlaceholderTitle) camPlaceholderTitle.textContent = 'Camera access required';
+      const placeholderDesc = document.getElementById('cam-placeholder-desc');
+      if (placeholderDesc) placeholderDesc.textContent = 'Allow camera permission in your browser and reload this page.';
+      console.warn('[MotionRunner] Browser camera access failed:', error);
     }
   }
 
@@ -236,9 +266,9 @@
   // ============================================================================
   function handleTelemetryMessage(data) {
     // 1. Render Video Frame
-    if (data.frame) {
+    if (data.frame && webcamFeed && webcamFeed.tagName === 'IMG') {
       webcamFeed.src = data.frame;
-      if (floatingCamImg && floatingWebcam.style.display !== 'none') {
+      if (floatingCamImg && floatingCamImg.tagName === 'IMG' && floatingWebcam.style.display !== 'none') {
         floatingCamImg.src = data.frame;
       }
       if (camOverlayPlaceholder && camOverlayPlaceholder.style.display !== 'none') {
@@ -727,6 +757,7 @@
   // INITIALIZATION
   // ============================================================================
   renderLeaderboard();
+  startBrowserCamera();
   connectWebSocket();
 
   if (gameFrame) {
