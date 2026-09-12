@@ -3,14 +3,9 @@ name = "deadbeef"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
-	"mediapipe>=0.10.0",
-	"opencv-python>=4.8.0",
-	"pynput>=1.7.6",
 	"fastapi>=0.110.0",
 	"uvicorn>=0.28.0",
-	"websockets>=12.0",
-	"pydirectinput>=1.0.4",
 ]
 
 [tool.vercel]
-entrypoint = "motionrunner.backend.main:app"
+entrypoint = "motionrunner.backend.vercel:app"

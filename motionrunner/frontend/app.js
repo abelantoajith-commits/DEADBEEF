@@ -82,8 +82,7 @@
       return 'ws://127.0.0.1:8000/ws';
     }
     const wsProto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = loc.host.includes(':') ? loc.host : `${loc.hostname}:8000`;
-    return `${wsProto}//${host}/ws`;
+    return `${wsProto}//${loc.host}/ws`;
   }
 
   function getApiBaseUrl() {
@@ -91,7 +90,7 @@
     if (loc.protocol === 'file:') {
       return 'http://127.0.0.1:8000';
     }
-    return `${loc.protocol}//${loc.host.includes(':') ? loc.host : `${loc.hostname}:8000`}`;
+    return loc.origin;
   }
 
   function connectWebSocket() {
