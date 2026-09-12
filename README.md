@@ -2,96 +2,65 @@
 
 
 
-# [Project Name] 🎯
+# [Motion Runners] 🎯
 
 
 ## Basic Details
-### Team Name: [Name]
+### Team Name: [DEADBEEF]
 
 
 ### Team Members
-- Team Lead: [Name] - [College]
-- Member 2: [Name] - [College]
+- Team Lead: [Abel Anto Ajith] - [Christ College of Engineering]
+- Member 2: [Arun Krishna CG] - [Christ College of Engineering]
 - Member 3: [Name] - [College]
 
 ### Project Description
-[2-3 lines about what your project does]
+[MotionRunner is a web arcade hub that lets you play Subway Surfers hands-free using real-time body and head motion captured through your webcam.
+
+Using AI computer vision, it tracks when you lean left or right to switch lanes, jump to leap over barriers, and duck to slide under obstacles.
+
+The web dashboard displays your live camera tracking feed, motion status indicators, and a high-score leaderboard all in one screen.]
 
 ### The Problem (that doesn't exist)
-[What ridiculous problem are you solving?]
+[How can we increase the difficulty of subway surfers?]
 
 ### The Solution (that nobody asked for)
-[How are you solving it? Keep it fun!]
+[The solution is to create a webapp with phython backend that tracks a person and generate the movement based on the actual movement of the person.]
 
 ## Technical Details
 ### Technologies/Components Used
 For Software:
-- [Languages used]
-- [Frameworks used]
-- [Libraries used]
-- [Tools used]
+- [Python,Javascript,HTML,CSS]
+- [FastAPI,Uvicorn,MediaPipe Pose,OpenCV,WebSockets,Vanilla HTML/CSS/JS]
+- [pynput,pydirectinput,ctypes / SendInput	]
+- [MediaPipe Pose,Open CV]
 
-For Hardware:
-- [List main components]
-- [List specifications]
-- [List tools required]
-
-### Implementation
-For Software:
 # Installation
-[commands]
+[Install everything in the requirements.txt and you are good to go]
 
 # Run
-[commands]
+[.\venv\Scripts\python.exe .\motionrunner\backend\main.py --serve]
 
 ### Project Documentation
 For Software:
 
 # Screenshots (Add at least 3)
-![Screenshot1](Add screenshot 1 here with proper name)
-*Add caption explaining what this shows*
+![https://drive.google.com/file/d/1L1kp_hy_JydUfus4MoUA9UfZpgsEYBxk/view?usp=drive_link]
+*This image shows the main view of the app*
 
-![Screenshot2](Add screenshot 2 here with proper name)
-*Add caption explaining what this shows*
+![https://drive.google.com/file/d/1Ot2FvRHedyvk1vpd0qZRbWe8b9TILE-1/view?usp=sharing](Add screenshot 2 here with proper name)
+*This is the full screen view*
 
-![Screenshot3](Add screenshot 3 here with proper name)
-*Add caption explaining what this shows*
+![https://drive.google.com/file/d/1QHC2GHUE2wNtFZPhu0PiMIYLP88Gk4AU/view?usp=sharing](Add screenshot 3 here with proper name)
+*Thisshows the score section of the app*
 
 # Diagrams
 ![Workflow](Add your workflow/architecture diagram here)
 *Add caption explaining your workflow*
 
-For Hardware:
-
-# Schematic & Circuit
-![Circuit](Add your circuit diagram here)
-*Add caption explaining connections*
-
-![Schematic](Add your schematic diagram here)
-*Add caption explaining the schematic*
-
-# Build Photos
-![Components](Add photo of your components here)
-*List out all components shown*
-
-![Build](Add photos of build process here)
-*Explain the build steps*
-
-![Final](Add photo of final product here)
-*Explain the final build*
-
-### Project Demo
-# Video
-[Add your demo video link here]
-*Explain what the video demonstrates*
-
-# Additional Demos
-[Add any extra demo materials/links]
-
 ## Team Contributions
-- [Name 1]: [Specific contributions]
-- [Name 2]: [Specific contributions]
-- [Name 3]: [Specific contributions]
+- [Abel Anto Ajith]: [Front end development]
+- [Arun Krishna CG]: [Back end development]
 
 ---
 Made with ❤️ at TinkerHub Useless Projects 
