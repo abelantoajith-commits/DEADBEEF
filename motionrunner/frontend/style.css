@@ -1428,3 +1428,106 @@ body {
   color: var(--text-muted);
   font-size: 12px;
 }
+
+/* ==============================================================================
+   Motion Sensitivity Tuning Drawer
+   ============================================================================== */
+.tuning-drawer-wrapper {
+  margin-top: 14px;
+  border-top: 1px solid rgba(45, 45, 60, 0.6);
+  padding-top: 12px;
+}
+
+.tuning-toggle-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tuning-toggle-btn:hover {
+  background: #191924;
+  color: var(--heading-cyan);
+  border-color: rgba(95, 214, 224, 0.2);
+}
+
+.tuning-toggle-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.toggle-chevron {
+  transition: transform 0.2s ease;
+}
+
+.tuning-drawer-content {
+  padding: 12px 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #111119;
+  border: 1px solid rgba(40, 40, 56, 0.8);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.tuning-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tuning-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.tuning-label {
+  color: var(--text-body);
+  font-weight: 500;
+}
+
+.tuning-val {
+  font-family: var(--font-mono);
+  color: var(--heading-cyan);
+  font-weight: 700;
+}
+
+.tuning-row input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: #252535;
+  outline: none;
+  cursor: pointer;
+}
+
+.tuning-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--heading-cyan);
+  box-shadow: 0 0 6px var(--heading-cyan-glow);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.tuning-row input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+

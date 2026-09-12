@@ -1,6 +1,6 @@
 /**
  * MotionRunner - Client Application Logic
- * Integrates live WebSocket pose telemetry, camera feed, and local High Scores
+ * Integrates live WebSocket pose telemetry, camera feed, sensitivity tuning, and High Scores
  */
 
 (function () {
@@ -34,6 +34,17 @@
   const recalibrateBtn = document.getElementById('recalibrate-btn');
   const recalBtnIcon = document.getElementById('recal-btn-icon');
 
+  const tuningToggleBtn = document.getElementById('tuning-toggle-btn');
+  const tuningDrawer = document.getElementById('tuning-drawer');
+  const tuningChevron = document.getElementById('tuning-chevron');
+  const sliderXSens = document.getElementById('slider-x-sens');
+  const valXSens = document.getElementById('val-x-sens');
+  const sliderYSens = document.getElementById('slider-y-sens');
+  const valYSens = document.getElementById('val-y-sens');
+  const sliderSmooth = document.getElementById('slider-smooth');
+  const valSmooth = document.getElementById('val-smooth');
+  const btnResetTuning = document.getElementById('btn-reset-tuning');
+
   const gameFrame = document.getElementById('game-frame');
   const gameViewport = document.getElementById('game-viewport');
   const focusGameBtn = document.getElementById('focus-game-btn');
@@ -64,7 +75,6 @@
   let lastFrameTime = Date.now();
   let frameCount = 0;
   let fps = 0;
-  const fpsCounter = document.getElementById('fps-counter');
 
   function getWsUrl() {
     const loc = window.location;
@@ -110,6 +120,8 @@
       if (camOverlayPlaceholder) {
         camOverlayPlaceholder.style.display = 'none';
       }
+      // Send current sensitivity settings
+      syncSensitivity();
     };
 
     socket.onmessage = function (event) {
@@ -150,16 +162,75 @@
     }
 
     // Reset status chips
-    updateChips('none', 'none', false, false, 0, 60, 0, 0);
+    updateChips('none', 'none', false, false, 0, 40, 0, 0);
 
     // Schedule auto reconnect
     if (!reconnectTimer) {
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
         connectWebSocket();
-      }, 2500);
+      }, 2000);
     }
   }
+
+  // ============================================================================
+  // DIRECT IN-BROWSER KEYBOARD DISPATCHER (sendKeyToGame)
+  // ============================================================================
+  function sendKeyToGame(iframeEl, key, type) {
+    const keyMap = {
+      ArrowLeft:  { key: "ArrowLeft",  code: "ArrowLeft",  keyCode: 37, char: "a", dir: "left" },
+      ArrowRight: { key: "ArrowRight", code: "ArrowRight", keyCode: 39, char: "d", dir: "right" },
+      ArrowUp:    { key: "ArrowUp",    code: "ArrowUp",    keyCode: 38, char: "w", dir: "up" },
+      ArrowDown:  { key: "ArrowDown",  code: "ArrowDown",  keyCode: 40, char: "s", dir: "down" },
+    };
+    const k = keyMap[key];
+    if (!k || !iframeEl) return;
+
+    try {
+      const targetWindow = iframeEl.contentWindow;
+      if (targetWindow) {
+        // 1. Direct function call if available in same-origin game
+        if (typeof targetWindow.handleGameAction === "function" && type === "keydown") {
+          targetWindow.handleGameAction(k.dir);
+        }
+
+        // 2. PostMessage channel
+        targetWindow.postMessage({ type: "MOTION_KEY", key: k.dir, state: type }, "*");
+
+        // 3. Synthetic DOM KeyboardEvent
+        const targetDoc = targetWindow.document || iframeEl.contentDocument;
+        if (targetDoc) {
+          const createEvt = (kName, cName, codeNum) => {
+            const evt = new KeyboardEvent(type, {
+              key: kName,
+              code: cName,
+              keyCode: codeNum,
+              which: codeNum,
+              bubbles: true,
+              cancelable: true,
+            });
+            try {
+              Object.defineProperty(evt, 'keyCode', { get: () => codeNum, configurable: true });
+              Object.defineProperty(evt, 'which', { get: () => codeNum, configurable: true });
+            } catch (err) {}
+            return evt;
+          };
+
+          const arrowEvt = createEvt(k.key, k.code, k.keyCode);
+          targetDoc.dispatchEvent(arrowEvt);
+          targetWindow.dispatchEvent(arrowEvt);
+
+          const canvas = targetDoc.querySelector('canvas') || targetDoc.getElementById('glcanvas') || targetDoc.getElementById('canvas');
+          if (canvas) canvas.dispatchEvent(arrowEvt);
+        }
+      }
+    } catch (e) {
+      // Cross-origin iframe, handled by OS hardware keystrokes from Python backend
+    }
+  }
+
+  let currentHKey = 'none';
+  let currentVKey = 'none';
 
   // ============================================================================
   // TELEMETRY & FRAME RENDERING
@@ -175,16 +246,12 @@
         camOverlayPlaceholder.style.display = 'none';
       }
 
-      // Calculate FPS
       frameCount++;
       const now = Date.now();
       if (now - lastFrameTime >= 1000) {
         fps = frameCount;
         frameCount = 0;
         lastFrameTime = now;
-        if (fpsCounter) {
-          fpsCounter.textContent = `${fps} FPS`;
-        }
       }
     }
 
@@ -195,44 +262,51 @@
     const isCalibrated = data.calibrated || false;
     const poseDetected = data.pose_detected !== false;
     const calibProgress = data.calib_progress || 0;
-    const calibTotal = data.calib_total || 60;
+    const calibTotal = data.calib_total || 40;
     const dx = data.dx || 0.0;
     const dy = data.dy || 0.0;
 
-    // Bridge synthetic DOM keys to same-origin iframe if active
-    if (hState !== lastHState) {
-      if (lastHState === 'left') bridgeSyntheticKeyEvent(37, 'ArrowLeft', false);
-      if (lastHState === 'right') bridgeSyntheticKeyEvent(39, 'ArrowRight', false);
-      if (hState === 'left') bridgeSyntheticKeyEvent(37, 'ArrowLeft', true);
-      if (hState === 'right') bridgeSyntheticKeyEvent(39, 'ArrowRight', true);
-      lastHState = hState;
+    // Safety: on pose loss, release all held in-browser keys
+    if (!poseDetected) {
+      if (currentHKey === 'left') sendKeyToGame(gameFrame, 'ArrowLeft', 'keyup');
+      if (currentHKey === 'right') sendKeyToGame(gameFrame, 'ArrowRight', 'keyup');
+      if (currentVKey === 'up') sendKeyToGame(gameFrame, 'ArrowUp', 'keyup');
+      if (currentVKey === 'down') sendKeyToGame(gameFrame, 'ArrowDown', 'keyup');
+      currentHKey = 'none';
+      currentVKey = 'none';
+    } else if (isCalibrated) {
+      // Horizontal lane control (LEFT / RIGHT)
+      if (hState !== currentHKey) {
+        if (currentHKey === 'left') sendKeyToGame(gameFrame, 'ArrowLeft', 'keyup');
+        if (currentHKey === 'right') sendKeyToGame(gameFrame, 'ArrowRight', 'keyup');
+
+        if (hState === 'left') sendKeyToGame(gameFrame, 'ArrowLeft', 'keydown');
+        if (hState === 'right') sendKeyToGame(gameFrame, 'ArrowRight', 'keydown');
+        currentHKey = hState;
+      }
+
+      // Vertical control (UP / DOWN / JUMP)
+      const effectiveV = isJumping ? 'up' : vState;
+      if (effectiveV !== currentVKey) {
+        if (currentVKey === 'up') sendKeyToGame(gameFrame, 'ArrowUp', 'keyup');
+        if (currentVKey === 'down') sendKeyToGame(gameFrame, 'ArrowDown', 'keyup');
+
+        if (effectiveV === 'up') sendKeyToGame(gameFrame, 'ArrowUp', 'keydown');
+        if (effectiveV === 'down') sendKeyToGame(gameFrame, 'ArrowDown', 'keydown');
+        currentVKey = effectiveV;
+      }
     }
 
-    if (isJumping !== lastIsJumping) {
-      bridgeSyntheticKeyEvent(38, 'ArrowUp', isJumping);
-      lastIsJumping = isJumping;
-    }
-
-    if (vState !== lastVState) {
-      if (lastVState === 'down') bridgeSyntheticKeyEvent(40, 'ArrowDown', false);
-      if (vState === 'down') bridgeSyntheticKeyEvent(40, 'ArrowDown', true);
-      lastVState = vState;
-    }
-
-    updateChips(hState, vState, isJumping, isCalibrated, calibProgress, calibTotal, dx, dy, poseDetected);
+    updateChips(hState, isJumping ? 'up' : vState, isCalibrated, calibProgress, calibTotal, dx, dy, poseDetected, isJumping);
   }
 
-  let lastHState = 'none';
-  let lastVState = 'none';
-  let lastIsJumping = false;
-
-  function updateChips(hState, vState, isJumping, isCalibrated, calibProgress, calibTotal, dx, dy, poseDetected) {
+  function updateChips(hState, vState, isCalibrated, calibProgress, calibTotal, dx, dy, poseDetected, isJumping) {
     // Coordinate readout
     if (coordsText) {
-      coordsText.textContent = `dx: ${dx >= 0 ? '+' : ''}${dx.toFixed(2)} | dy: ${dy >= 0 ? '+' : ''}${dy.toFixed(2)}`;
+      coordsText.textContent = `dx: ${dx >= 0 ? '+' : ''}${dx.toFixed(3)} | dy: ${dy >= 0 ? '+' : ''}${dy.toFixed(3)}`;
     }
 
-    // Horizontal Chip
+    // Horizontal Chip (LEFT / RIGHT)
     if (chipHKey && valHKey) {
       const isLeft = hState.toLowerCase() === 'left';
       const isRight = hState.toLowerCase() === 'right';
@@ -244,21 +318,15 @@
       }
     }
 
-    // Vertical Chip
+    // Vertical Chip (UP / DOWN / JUMP)
     if (chipVKey && valVKey) {
-      if (isJumping) {
-        valVKey.textContent = 'JUMP';
-        chipVKey.className = 'telemetry-chip jump-active';
-      } else if (vState.toLowerCase() === 'down') {
-        valVKey.textContent = 'DUCK';
-        chipVKey.className = 'telemetry-chip active';
-      } else {
-        valVKey.textContent = 'NONE';
-        chipVKey.className = 'telemetry-chip';
-      }
+      const isUp = vState.toLowerCase() === 'up' || isJumping;
+      const isDown = vState.toLowerCase() === 'down';
+      valVKey.textContent = isJumping ? 'JUMP' : isUp ? 'UP' : isDown ? 'DOWN' : 'NONE';
+      chipVKey.className = (isUp || isDown) ? 'telemetry-chip active' : 'telemetry-chip';
       if (miniVChip) {
         miniVChip.textContent = `V: ${valVKey.textContent}`;
-        miniVChip.className = (isJumping || vState.toLowerCase() === 'down') ? 'mini-chip active' : 'mini-chip';
+        miniVChip.className = (isUp || isDown) ? 'mini-chip active' : 'mini-chip';
       }
     }
 
@@ -312,12 +380,10 @@
       }, 600);
     }
 
-    // Send via WebSocket if open
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ action: 'recalibrate' }));
     }
 
-    // Also trigger via REST endpoint
     try {
       await fetch(`${getApiBaseUrl()}/recalibrate`, { method: 'POST' });
       console.log('[MotionRunner] Recalibration endpoint called.');
@@ -328,6 +394,72 @@
 
   if (recalibrateBtn) {
     recalibrateBtn.addEventListener('click', triggerRecalibrate);
+  }
+
+  // ============================================================================
+  // SENSITIVITY & TUNING DRAWER
+  // ============================================================================
+  function syncSensitivity() {
+    const xThresh = parseFloat(sliderXSens ? sliderXSens.value : 0.030);
+    const yThresh = parseFloat(sliderYSens ? sliderYSens.value : 0.025);
+    const smoothing = parseFloat(sliderSmooth ? sliderSmooth.value : 0.60);
+
+    const payload = {
+      action: 'set_sensitivity',
+      x_thresh: xThresh,
+      y_thresh: yThresh,
+      smoothing: smoothing
+    };
+
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(payload));
+    }
+
+    fetch(`${getApiBaseUrl()}/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {});
+  }
+
+  if (tuningToggleBtn && tuningDrawer) {
+    tuningToggleBtn.addEventListener('click', () => {
+      const isHidden = tuningDrawer.style.display === 'none';
+      tuningDrawer.style.display = isHidden ? 'block' : 'none';
+      if (tuningChevron) {
+        tuningChevron.textContent = isHidden ? 'expand_less' : 'expand_more';
+      }
+    });
+  }
+
+  if (sliderXSens && valXSens) {
+    sliderXSens.addEventListener('input', (e) => {
+      valXSens.textContent = parseFloat(e.target.value).toFixed(3);
+      syncSensitivity();
+    });
+  }
+
+  if (sliderYSens && valYSens) {
+    sliderYSens.addEventListener('input', (e) => {
+      valYSens.textContent = parseFloat(e.target.value).toFixed(3);
+      syncSensitivity();
+    });
+  }
+
+  if (sliderSmooth && valSmooth) {
+    sliderSmooth.addEventListener('input', (e) => {
+      valSmooth.textContent = parseFloat(e.target.value).toFixed(2);
+      syncSensitivity();
+    });
+  }
+
+  if (btnResetTuning) {
+    btnResetTuning.addEventListener('click', () => {
+      if (sliderXSens) { sliderXSens.value = 0.030; valXSens.textContent = '0.030'; }
+      if (sliderYSens) { sliderYSens.value = 0.025; valYSens.textContent = '0.025'; }
+      if (sliderSmooth) { sliderSmooth.value = 0.60; valSmooth.textContent = '0.60'; }
+      syncSensitivity();
+    });
   }
 
   // ============================================================================
@@ -406,27 +538,8 @@
     });
   }
 
-  // Same-origin iframe synthetic event bridge for ultra-low latency direct control
-  function bridgeSyntheticKeyEvent(keyCode, keyName, isDown) {
-    if (!gameFrame || !gameFrame.src.includes('/game/index.html')) return;
-    try {
-      const doc = gameFrame.contentDocument || gameFrame.contentWindow?.document;
-      if (doc) {
-        const evt = new KeyboardEvent(isDown ? 'keydown' : 'keyup', {
-          keyCode: keyCode,
-          which: keyCode,
-          key: keyName,
-          code: keyName,
-          bubbles: true,
-          cancelable: true
-        });
-        doc.dispatchEvent(evt);
-      }
-    } catch (e) {}
-  }
-
   // ============================================================================
-  // HIGH SCORES MANAGEMENT (localStorage + Descending Order + Top 3 Styling)
+  // HIGH SCORES MANAGEMENT (Backend REST + LocalStorage Fallback)
   // ============================================================================
   const STORAGE_KEY = 'motionrunner_scores';
 
@@ -438,30 +551,38 @@
     { id: '5', name: 'SurferX', score: 16400, date: new Date(Date.now() - 1000 * 60 * 2880).toISOString() },
   ];
 
-  function loadScores() {
+  async function loadScores() {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/scores`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          saveScoresToLocal(data);
+          return data;
+        }
+      }
+    } catch (e) {
+      console.log('[MotionRunner] Using localStorage fallback for scores.');
+    }
+
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        saveScores(defaultScores);
-        return defaultScores;
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.sort((a, b) => b.score - a.score);
+        }
       }
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.sort((a, b) => b.score - a.score);
-      }
-      return defaultScores;
-    } catch (e) {
-      console.warn('[MotionRunner] Error loading scores from localStorage:', e);
-      return defaultScores;
-    }
+    } catch (e) {}
+
+    saveScoresToLocal(defaultScores);
+    return defaultScores;
   }
 
-  function saveScores(scores) {
+  function saveScoresToLocal(scores) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
-    } catch (e) {
-      console.warn('[MotionRunner] Error saving scores to localStorage:', e);
-    }
+    } catch (e) {}
   }
 
   function formatRelativeDate(isoStr) {
@@ -474,8 +595,8 @@
     return `${Math.floor(diffSec / 86400)}d`;
   }
 
-  function renderLeaderboard() {
-    const scores = loadScores();
+  async function renderLeaderboard() {
+    const scores = await loadScores();
     scoresList.innerHTML = '';
 
     if (!scores || scores.length === 0) {
@@ -517,7 +638,7 @@
   }
 
   if (scoreForm) {
-    scoreForm.addEventListener('submit', (e) => {
+    scoreForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = runnerNameInput.value.trim();
       const scoreNum = parseInt(runnerScoreInput.value, 10);
@@ -532,31 +653,48 @@
       }
 
       const newEntry = {
-        id: 'run_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
         name: name,
         score: scoreNum,
-        date: new Date().toISOString()
       };
 
-      const currentScores = loadScores();
-      currentScores.push(newEntry);
-      currentScores.sort((a, b) => b.score - a.score);
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/scores`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newEntry)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.scores) {
+            saveScoresToLocal(data.scores);
+          }
+        }
+      } catch (err) {
+        // Fallback local save
+        const currentScores = await loadScores();
+        currentScores.push({
+          id: 'run_' + Date.now(),
+          name: name,
+          score: scoreNum,
+          date: new Date().toISOString()
+        });
+        currentScores.sort((a, b) => b.score - a.score);
+        saveScoresToLocal(currentScores.slice(0, 50));
+      }
 
-      // Keep top 50
-      const trimmed = currentScores.slice(0, 50);
-      saveScores(trimmed);
-      renderLeaderboard();
-
-      // Reset score input
+      await renderLeaderboard();
       runnerScoreInput.value = '';
     });
   }
 
   if (clearScoresBtn) {
-    clearScoresBtn.addEventListener('click', () => {
+    clearScoresBtn.addEventListener('click', async () => {
       if (confirm('Reset high scores leaderboard?')) {
-        saveScores(defaultScores);
-        renderLeaderboard();
+        try {
+          await fetch(`${getApiBaseUrl()}/scores`, { method: 'DELETE' });
+        } catch (e) {}
+        saveScoresToLocal(defaultScores);
+        await renderLeaderboard();
       }
     });
   }
@@ -592,7 +730,6 @@
   renderLeaderboard();
   connectWebSocket();
 
-  // Focus game iframe once loaded
   if (gameFrame) {
     gameFrame.addEventListener('load', () => {
       console.log('[MotionRunner] Game iframe loaded successfully.');

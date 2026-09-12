@@ -1,0 +1,44 @@
+[
+  {
+    "id": "score_1789203570298",
+    "name": "TestPlayer",
+    "score": 99999,
+    "date": "2026-09-12T08:59:30Z"
+  },
+  {
+    "id": "1",
+    "name": "CyberDash",
+    "score": 42800,
+    "date": "2026-09-12T10:20:00Z"
+  },
+  {
+    "id": "2",
+    "name": "NeonRider",
+    "score": 38240,
+    "date": "2026-09-12T09:15:00Z"
+  },
+  {
+    "id": "3",
+    "name": "Valkyrie",
+    "score": 29500,
+    "date": "2026-09-11T18:40:00Z"
+  },
+  {
+    "id": "4",
+    "name": "TrackRunner",
+    "score": 21900,
+    "date": "2026-09-11T14:30:00Z"
+  },
+  {
+    "id": "5",
+    "name": "SurferX",
+    "score": 16400,
+    "date": "2026-09-10T12:00:00Z"
+  },
+  {
+    "id": "score_1789204454315",
+    "name": "RunnerOne",
+    "score": 12450,
+    "date": "2026-09-12T09:14:14Z"
+  }
+]

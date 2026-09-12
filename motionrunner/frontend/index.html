@@ -95,7 +95,7 @@
               src="https://subwaygame.io/subway-surfers-classic/" 
               id="game-frame" 
               title="Subway Surfers Classic" 
-              allow="autoplay; fullscreen; gamepad; focus-without-user-activation; keyboard-map"
+              allow="autoplay; fullscreen; gamepad; focus-without-user-activation; keyboard-map *; accelerometer; gyroscope"
               allowfullscreen="true"
               tabindex="0">
             </iframe>
@@ -166,10 +166,10 @@
               <div class="instr-content">
                 <h4 class="instr-heading">How to Play with Body Motion</h4>
                 <p class="instr-text">
-                  Stand 4–6 feet from your camera so your upper body is visible. 
+                  Stand or sit 3–6 feet from your webcam. 
                   <strong>Lean Left / Right</strong> to switch lanes, 
-                  <strong>Jump in place</strong> to leap over obstacles, and 
-                  <strong>Duck / Crouch</strong> to slide under hurdles.
+                  <strong>Jump / Lift head</strong> to leap over barriers, and 
+                  <strong>Duck / Crouch</strong> to roll under obstacles.
                 </p>
               </div>
             </div>
@@ -264,6 +264,43 @@
                 </div>
                 <span class="chip-value" id="val-calib-status">STAND STILL</span>
               </div>
+            </div>
+          </div>
+
+          <!-- Sensitivity & Tuning Expandable Drawer -->
+          <div class="tuning-drawer-wrapper">
+            <button class="tuning-toggle-btn" id="tuning-toggle-btn" type="button">
+              <span class="material-symbols-outlined">tune</span>
+              <span>Motion Sensitivity Tuning</span>
+              <span class="material-symbols-outlined toggle-chevron" id="tuning-chevron">expand_more</span>
+            </button>
+
+            <div class="tuning-drawer-content" id="tuning-drawer" style="display: none;">
+              <div class="tuning-row">
+                <div class="tuning-label-row">
+                  <span class="tuning-label">Horizontal Lean Sensitivity</span>
+                  <span class="tuning-val" id="val-x-sens">0.030</span>
+                </div>
+                <input type="range" id="slider-x-sens" min="0.015" max="0.080" step="0.005" value="0.030">
+              </div>
+
+              <div class="tuning-row">
+                <div class="tuning-label-row">
+                  <span class="tuning-label">Vertical / Jump Sensitivity</span>
+                  <span class="tuning-val" id="val-y-sens">0.025</span>
+                </div>
+                <input type="range" id="slider-y-sens" min="0.015" max="0.080" step="0.005" value="0.025">
+              </div>
+
+              <div class="tuning-row">
+                <div class="tuning-label-row">
+                  <span class="tuning-label">Filter Smoothing</span>
+                  <span class="tuning-val" id="val-smooth">0.60</span>
+                </div>
+                <input type="range" id="slider-smooth" min="0.20" max="0.95" step="0.05" value="0.60">
+              </div>
+
+              <button class="text-link-btn" id="btn-reset-tuning" type="button">Reset Default Sensitivity</button>
             </div>
           </div>
 

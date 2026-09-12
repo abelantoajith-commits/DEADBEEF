@@ -137,6 +137,8 @@ def trigger_jump(current_time):
     Non-blocking jump trigger: presses Up Arrow and schedules its release.
     Does not block the video processing loop with sleep().
     """
+
+    print("jump")
     global is_jumping, jump_release_time, last_jump_time
     keyboard.press(Key.up)
     is_jumping = True
