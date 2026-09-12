@@ -74,6 +74,20 @@
   let isConnected = false;
   let localCameraReady = false;
   let localCameraStream = null;
+  let browserPose = null;
+  let browserPoseBusy = false;
+  let browserTrackingEnabled = true;
+  let browserBaselineX = null;
+  let browserBaselineY = null;
+  let browserCalibrationX = [];
+  let browserCalibrationY = [];
+  let browserSmoothedX = null;
+  let browserSmoothedY = null;
+  let browserPreviousY = null;
+  let browserHorizontalState = 'none';
+  let browserVerticalState = 'none';
+  let browserLastJump = 0;
+  let browserJumpUntil = 0;
   let lastFrameTime = Date.now();
   let frameCount = 0;
   let fps = 0;
@@ -114,6 +128,7 @@
     socket.onopen = function () {
       console.log('[MotionRunner] Connected to backend vision stream.');
       isConnected = true;
+      browserTrackingEnabled = false;
       if (serverStatusPill) {
         serverStatusPill.className = 'connection-status-pill connected';
         serverStatusText.textContent = 'Vision Online';
@@ -147,6 +162,7 @@
 
   function handleDisconnect() {
     isConnected = false;
+    browserTrackingEnabled = true;
     if (serverStatusPill) {
       serverStatusPill.className = `connection-status-pill ${localCameraReady ? 'connected' : 'error'}`;
       serverStatusText.textContent = localCameraReady ? 'Camera Ready' : 'Vision Offline';
@@ -188,6 +204,8 @@
       localCameraReady = true;
       if (webcamFeed) webcamFeed.srcObject = localCameraStream;
       if (floatingCamImg) floatingCamImg.srcObject = localCameraStream;
+      await webcamFeed.play();
+      startBrowserPose();
       if (camOverlayPlaceholder) camOverlayPlaceholder.style.display = 'none';
       if (serverStatusPill && !isConnected) {
         serverStatusPill.className = 'connection-status-pill connected';
@@ -200,6 +218,138 @@
       if (placeholderDesc) placeholderDesc.textContent = 'Allow camera permission in your browser and reload this page.';
       console.warn('[MotionRunner] Browser camera access failed:', error);
     }
+  }
+
+  function resetBrowserCalibration() {
+    browserBaselineX = null;
+    browserBaselineY = null;
+    browserCalibrationX = [];
+    browserCalibrationY = [];
+    browserSmoothedX = null;
+    browserSmoothedY = null;
+    browserPreviousY = null;
+    browserHorizontalState = 'none';
+    browserVerticalState = 'none';
+    browserLastJump = 0;
+    browserJumpUntil = 0;
+  }
+
+  function startBrowserPose() {
+    if (!window.Pose || !webcamFeed) {
+      if (camPlaceholderTitle) camPlaceholderTitle.textContent = 'Pose engine unavailable';
+      return;
+    }
+
+    browserPose = new window.Pose({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+    });
+    browserPose.setOptions({
+      modelComplexity: 1,
+      smoothLandmarks: true,
+      enableSegmentation: false,
+      minDetectionConfidence: 0.6,
+      minTrackingConfidence: 0.6,
+    });
+    browserPose.onResults(handleBrowserPoseResults);
+    resetBrowserCalibration();
+    runBrowserPoseFrame();
+  }
+
+  async function runBrowserPoseFrame() {
+    if (!browserPose || !localCameraReady) return;
+    if (!browserPoseBusy && webcamFeed.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      browserPoseBusy = true;
+      try {
+        await browserPose.send({ image: webcamFeed });
+      } catch (error) {
+        console.warn('[MotionRunner] Browser pose frame failed:', error);
+      } finally {
+        browserPoseBusy = false;
+      }
+    }
+    window.requestAnimationFrame(runBrowserPoseFrame);
+  }
+
+  function handleBrowserPoseResults(results) {
+    if (!browserTrackingEnabled) return;
+
+    const landmarks = results.poseLandmarks;
+    const requiredLandmarks = landmarks && [11, 12, 23, 24].every(
+      (index) => landmarks[index] && (landmarks[index].visibility || 0) >= 0.45,
+    );
+    if (!requiredLandmarks) {
+      handleTelemetryMessage({ pose_detected: false, calibrated: false });
+      return;
+    }
+
+    const centerX = (landmarks[11].x + landmarks[12].x + landmarks[23].x + landmarks[24].x) / 4;
+    const shoulderY = (landmarks[11].y + landmarks[12].y) / 2;
+    const calibrationTotal = 40;
+
+    if (browserBaselineX === null) {
+      browserCalibrationX.push(centerX);
+      browserCalibrationY.push(shoulderY);
+      if (browserCalibrationX.length >= calibrationTotal) {
+        browserBaselineX = browserCalibrationX.reduce((sum, value) => sum + value, 0) / calibrationTotal;
+        browserBaselineY = browserCalibrationY.reduce((sum, value) => sum + value, 0) / calibrationTotal;
+        browserSmoothedX = browserBaselineX;
+        browserSmoothedY = browserBaselineY;
+        browserPreviousY = browserBaselineY;
+      }
+      handleTelemetryMessage({
+        h_state: 'none',
+        v_state: 'none',
+        pose_detected: true,
+        calibrated: false,
+        calib_progress: browserCalibrationX.length,
+        calib_total: calibrationTotal,
+      });
+      return;
+    }
+
+    const smoothing = parseFloat(sliderSmooth ? sliderSmooth.value : 0.60);
+    browserSmoothedX = smoothing * centerX + (1 - smoothing) * browserSmoothedX;
+    browserSmoothedY = smoothing * shoulderY + (1 - smoothing) * browserSmoothedY;
+    const dx = browserSmoothedX - browserBaselineX;
+    const dy = browserSmoothedY - browserBaselineY;
+    const velocityY = browserSmoothedY - browserPreviousY;
+    browserPreviousY = browserSmoothedY;
+
+    const xThreshold = parseFloat(sliderXSens ? sliderXSens.value : 0.030);
+    const yThreshold = parseFloat(sliderYSens ? sliderYSens.value : 0.025);
+    const xReleaseThreshold = xThreshold * 0.5;
+    const yReleaseThreshold = yThreshold * 0.5;
+
+    if (browserHorizontalState === 'none') {
+      if (dx < -xThreshold) browserHorizontalState = 'left';
+      if (dx > xThreshold) browserHorizontalState = 'right';
+    } else if (Math.abs(dx) < xReleaseThreshold) {
+      browserHorizontalState = 'none';
+    }
+
+    if (browserVerticalState === 'none' && dy > yThreshold * 1.2) {
+      browserVerticalState = 'down';
+    } else if (browserVerticalState === 'down' && dy < yReleaseThreshold * 1.2) {
+      browserVerticalState = 'none';
+    }
+
+    const now = performance.now();
+    if (dy < -yThreshold && velocityY < -0.008 && now - browserLastJump > 400) {
+      browserLastJump = now;
+      browserJumpUntil = now + 160;
+    }
+
+    handleTelemetryMessage({
+      h_state: browserHorizontalState,
+      v_state: browserVerticalState,
+      is_jumping: now < browserJumpUntil,
+      pose_detected: true,
+      calibrated: true,
+      calib_progress: calibrationTotal,
+      calib_total: calibrationTotal,
+      dx,
+      dy,
+    });
   }
 
   // ============================================================================
@@ -412,6 +562,7 @@
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ action: 'recalibrate' }));
     }
+    resetBrowserCalibration();
 
     try {
       await fetch(`${getApiBaseUrl()}/recalibrate`, { method: 'POST' });
